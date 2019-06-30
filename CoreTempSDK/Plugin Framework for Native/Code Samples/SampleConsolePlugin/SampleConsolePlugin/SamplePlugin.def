@@ -1,4 +1,0 @@
-LIBRARY	"SamplePlugin"
-EXPORTS
-	GetPlugin @1LIBRARY
-	ReleasePlugin @2LIBRARY
