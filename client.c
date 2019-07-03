@@ -1,16 +1,52 @@
 #include <stdio.h>
 #include <string.h>
+#include <math.h>
+#include <stdlib.h>
+#include <dirent.h>
 
 #include <sys/types.h>
 #include <sys/socket.h>
-#include<arpa/inet.h>
-#include<unistd.h>
+#include <arpa/inet.h>
+#include <unistd.h>
 
 #define PORT 8080 
 #define MAX 10
-   
-#include "sensor.h"   
-   
+
+float cpu_temperature(void){
+	
+	// Declaring all variables
+	FILE *fp;
+	int status, count = 0;
+	char cpu_temp[PATH_MAX];
+	float avg_temp;
+
+	// Use popen to get all thermal temperatures from all cores
+	fp = popen("cat /sys/class/thermal/thermal_zone*/temp", "r");
+	if (fp == NULL){
+		printf("Unable to obtain CPU temperature\n");
+		return 0;
+	}
+		
+	// Sum temperature when it's not zero.
+	while (fgets(cpu_temp, PATH_MAX, fp) != NULL){
+		if (atof(cpu_temp) != 0.00){
+			avg_temp += atof(cpu_temp);
+			count++;
+		}
+	}
+
+	status = pclose(fp);
+	if (status == -1) {
+		printf("Error during pipe closing.\n");
+		exit(0);
+	} 
+
+	// Averaging temperature and conveting from millicelsius degrees to celsius degrees.
+	avg_temp = avg_temp / (1000 * count);
+	
+	return avg_temp;
+	
+}
 
 //Socket Creation
 int CreateSocket(void){
@@ -29,10 +65,10 @@ int ConnectSocket(int network_socket){
 	struct sockaddr_in server_address;
 	
 	server_address.sin_family = AF_INET; 
-    server_address.sin_port = htons(PORT);
     server_address.sin_addr.s_addr = inet_addr("127.0.0.1"); //Local Host
-    
+    server_address.sin_port = htons(PORT);
     conn_status = connect(network_socket, (struct sockaddr *)&server_address, sizeof(struct sockaddr_in));
+	
 	return conn_status;
 } 
 
@@ -41,8 +77,8 @@ int SocketSend(int network_socket, char *message, int len_message){
 
 	int send_status = -1;
     struct timeval tv;
-    tv.tv_sec = 10;  /* 10 Secs Timeout */
-    tv.tv_usec = 0;  
+    tv.tv_sec = 10;  /* 10 seconds */
+    tv.tv_usec = 0;  /* 0 microseconds */
 
     if(setsockopt(network_socket, SOL_SOCKET, SO_REUSEADDR, (char *)&tv, sizeof(tv)) < 0){
     	printf("Time Out\n");

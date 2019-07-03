@@ -3,8 +3,9 @@
 
 #include <sys/types.h>
 #include <sys/socket.h>
-#include<arpa/inet.h>
-#include<unistd.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+#include <dirent.h>
 
 #define PORT 8080
  
@@ -40,10 +41,16 @@ int BindSocket(int network_socket){
 
 
 int main(int argc , char *argv[]){
+
+	FILE *fp;
 	int network_socket , sock , clientLen;
 	struct sockaddr_in server ,client;
-	char client_message[100]={0};
+	char client_message[10]={0};
+	char cwd[PATH_MAX];
 
+	//Get current diretory and concatetate it with the output text file
+    getcwd(cwd, sizeof(cwd));
+    strcat(cwd, "/temperature.txt");
 
 	//Create socket
 	network_socket = CreateSocket();
@@ -79,13 +86,18 @@ int main(int argc , char *argv[]){
 		printf("Connection accepted\n");
 		
 		//Receive a reply from the client
-		if( recv(sock , client_message , 200 , 0) < 0){
+		if( recv(sock , client_message , 10 , 0) < 0){
 			printf("recv failed");
 			break;
 		}
-		printf("%s ºC\n", client_message);
-	close(sock);
-	sleep(1);
+		fp = fopen(cwd, "a");
+		fprintf(fp, "CPU temperature = %s ºC\n", client_message);
+					
+		fclose(fp);						
+		close(sock);
+		sleep(1);
+		
 	}
+	
 	return 0;
 }
